@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Scout — Stop searching. Start going.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body,#root{height:100%;width:100%;overflow:hidden;}
+  body{background:#080808;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+const BG="#080808", F="Helvetica Neue, Helvetica, Arial, sans-serif";
+const C={primary:"#FFFFFF",secondary:"#999999",tertiary:"#666666",muted:"#444444",border:"#2a2a2a",borderHi:"#555555",surface:"#111111",surfaceHi:"#1a1a1a"};
+const CITY_ST={Detroit:"MI",Chicago:"IL","New York":"NY",Miami:"FL",LA:"CA"};
+const MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TIME_OPTS=["Morning","Lunch","Afternoon","Dinner","Evening","Late Night"];
+
+const POOLS={
+  restaurants:[
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1544025162-d76694265947?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=700&q=80&fit=crop",
+  ],
+  hotels:[
+    "https://images.unsplash.com/photo-1566073771-83b1b4be4585?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=700&q=80&fit=crop",
+  ],
+  experiences:[
+    "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1533777857457-40a7ab6f9b7c?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=700&q=80&fit=crop",
+    "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=700&q=80&fit=crop",
+  ],
+};
+
+function getPhotos(cat,id,n){
+  const pool=POOLS[cat]||POOLS.restaurants;
+  const base=parseInt(id.replace(/\D/g,""))||0;
+  const out=[];
+  for(let i=0;i<(n||4);i++) out.push(pool[(base+i)%pool.length]);
+  return out;
+}
+
+const DATA={
+  restaurants:{
+    Detroit:[
+      {id:"r1",name:"Grey Ghost Detroit",sub:"American · Midtown",price:"$$$",rating:4.6,cuisine:"American",desc:"Upscale American with exposed brick, legendary cocktails, and a burger people drive hours for.",meta:"6:00 PM",tags:["Trendy","Great Bar"],color:"#0d1520",quote:"One of the best dining experiences in Detroit — the atmosphere alone is worth the trip."},
+      {id:"r2",name:"ADELINA",sub:"Italian · Downtown",price:"$$$",rating:4.8,cuisine:"Italian",desc:"Authentic Italian by chef Marco. The rigatoni and lamb chops are absolutely unforgettable.",meta:"5:00 PM",tags:["Romantic","Top Rated"],color:"#150d20",quote:"The pasta here changed my life. I don't say that lightly."},
+      {id:"r3",name:"Experience ZuZu",sub:"Asian Fusion · Downtown",price:"$$",rating:4.7,cuisine:"Sushi",desc:"Buzzy fusion on Woodward. Wagyu skewers, sushi towers, and a vibe that goes all night.",meta:"7:00 PM",tags:["Lively","Large Groups"],color:"#061a12",quote:"The sushi tower alone makes it worth the reservation."},
+      {id:"r4",name:"Selden Standard",sub:"American · New Center",price:"$$$",rating:4.7,cuisine:"American",desc:"Detroit's most beloved neighborhood spot. Farm-to-table done with soul.",meta:"6:30 PM",tags:["Local Fave","Seasonal"],color:"#160c06",quote:"My favorite restaurant in the city, and I've tried them all."},
+      {id:"r5",name:"Chartreuse Kitchen",sub:"Contemporary · Midtown",price:"$$$",rating:4.7,cuisine:"American",desc:"Veggie-forward with knockout cocktails. The smoked beet salad is a revelation.",meta:"7:00 PM",tags:["Cozy","Intimate"],color:"#0d180d",quote:"The cocktails are among the best in the city. Full stop."},
+      {id:"r6",name:"Sexy Steak",sub:"Steakhouse · Downtown",price:"$$$$",rating:4.6,cuisine:"Steakhouse",desc:"Chic, high-energy steakhouse. The surf and turf is elite. Dress up.",meta:"8:00 PM",tags:["Upscale","Celebratory"],color:"#180606",quote:"Worth every penny for a special night out."},
+    ],
+    Chicago:[
+      {id:"r7",name:"Girl & The Goat",sub:"American · West Loop",price:"$$$",rating:4.7,cuisine:"American",desc:"Stephanie Izard's iconic spot. Order the green beans and goat empanadas.",meta:"6:00 PM",tags:["Iconic","Share Plates"],color:"#0d1018",quote:"The green beans will ruin all other green beans for you forever."},
+      {id:"r8",name:"Monteverde",sub:"Italian · West Loop",price:"$$$",rating:4.7,cuisine:"Italian",desc:"Watch them make pasta fresh. The gnocchetti and cacio e pepe are otherworldly.",meta:"7:30 PM",tags:["Romantic","Handmade Pasta"],color:"#160e06",quote:"Watching them make the pasta before your eyes is half the experience."},
+      {id:"r9",name:"The Dearborn",sub:"American · Loop",price:"$$",rating:4.7,cuisine:"American",desc:"The best burger in Chicago, full stop. Truffle fries and craft cocktails.",meta:"6:00 PM",tags:["Casual","Burger"],color:"#060d18",quote:"I've eaten here 12 times. I'll eat here 12 more."},
+      {id:"r10",name:"Alinea",sub:"Contemporary · Lincoln Park",price:"$$$$",rating:4.6,cuisine:"American",desc:"One of the best restaurants on Earth. A full theatrical culinary experience.",meta:"8:00 PM",tags:["Michelin","Once in a Lifetime"],color:"#080814",quote:"Not just a meal. An experience that will stay with you for years."},
+    ],
+    "New York":[
+      {id:"r11",name:"Gramercy Tavern",sub:"American · Flatiron",price:"$$$$",rating:4.6,cuisine:"American",desc:"Danny Meyer's crown jewel. Warm, elegant, consistently brilliant.",meta:"6:30 PM",tags:["Classic NYC","Reliable"],color:"#100e04",quote:"The definition of consistent excellence. Never a bad visit."},
+      {id:"r12",name:"La Grande Boucherie",sub:"French · Midtown",price:"$$",rating:4.6,cuisine:"French",desc:"Belle Époque Paris in Midtown. Gorgeous space, incredible steak frites.",meta:"7:00 PM",tags:["Stunning","Brasserie"],color:"#0e0614",quote:"The most beautiful dining room in New York. The food matches."},
+      {id:"r13",name:"La Pecora Bianca",sub:"Italian · Bryant Park",price:"$$$",rating:4.8,cuisine:"Italian",desc:"Bright modern Italian steps from Bryant Park. The vodka rigatoni is a must.",meta:"7:00 PM",tags:["Top Rated","All Day"],color:"#061410",quote:"The rigatoni vodka is worth the trip from anywhere in the city."},
+      {id:"r14",name:"Le Bernardin",sub:"Seafood · Midtown",price:"$$$$",rating:4.6,cuisine:"Seafood",desc:"Eric Ripert's legendary temple to seafood. Three Michelin stars.",meta:"8:00 PM",tags:["Michelin ★★★","Seafood"],color:"#060e14",quote:"The best seafood restaurant in the world. No exaggeration."},
+    ],
+    Miami:[
+      {id:"r15",name:"Crazy About You",sub:"American · Brickell",price:"$$",rating:4.8,cuisine:"American",desc:"Waterfront Brickell gem with incredible views and food that matches.",meta:"7:00 PM",tags:["Waterfront","Top Rated"],color:"#041810",quote:"The waterfront view plus the food is an unbeatable combination."},
+      {id:"r16",name:"Giselle Miami",sub:"Asian · Downtown",price:"$$$",rating:4.8,cuisine:"Sushi",desc:"The flaming lobster, 24-karat gold peanut butter bar. Miami at its most Miami.",meta:"8:30 PM",tags:["Showstopper","Late Night"],color:"#0c0614",quote:"The flaming lobster is the most dramatic dish I've ever been served."},
+      {id:"r17",name:"Dolores But Call Me Lolita",sub:"Contemporary · Brickell",price:"$$",rating:4.8,cuisine:"American",desc:"Every entree comes with a free app. Rooftop bar after. Miami done right.",meta:"6:00 PM",tags:["Rooftop","Value"],color:"#160410",quote:"Incredible value, incredible vibes, incredible food."},
+      {id:"r18",name:"RosaNegra Miami",sub:"Contemporary · Brickell",price:"$$$",rating:4.7,cuisine:"French",desc:"Wagyu carpaccio, hamachi with caviar, and a late night scene.",meta:"8:00 PM",tags:["Late Night","Upscale"],color:"#140408",quote:"The wagyu carpaccio might be the best thing I've ever eaten."},
+    ],
+    LA:[
+      {id:"r19",name:"Girl & The Goat LA",sub:"American · Arts District",price:"$$$",rating:4.8,cuisine:"American",desc:"LA's version of the Chicago icon. The corn dish is still on people's minds.",meta:"7:00 PM",tags:["Buzzy","Share Plates"],color:"#100e04",quote:"The corn dish alone justifies the reservation. Trust me."},
+      {id:"r20",name:"71Above",sub:"Contemporary · Downtown",price:"$$$$",rating:4.5,cuisine:"American",desc:"71 floors up with panoramic LA views. Three-course dinner in the sky.",meta:"7:30 PM",tags:["Views","Fine Dining"],color:"#060614",quote:"Watching the sun set over LA from 71 floors up is something else entirely."},
+      {id:"r21",name:"Perch",sub:"French · Downtown",price:"$$$",rating:4.4,cuisine:"French",desc:"Rooftop French bistro with live music and skyline views. Best sunset in DTLA.",meta:"6:30 PM",tags:["Rooftop","Live Music"],color:"#080e08",quote:"The live music and skyline together make this the most romantic spot in DTLA."},
+      {id:"r22",name:"Redbird",sub:"American · Downtown",price:"$$$",rating:4.6,cuisine:"American",desc:"A converted cathedral in DTLA. Cocktails as inventive as the setting.",meta:"7:00 PM",tags:["Stunning Space","Cocktails"],color:"#140808",quote:"I've never been anywhere that feels quite like this."},
+    ],
+  },
+  hotels:{
+    Detroit:[
+      {id:"h1",name:"The Shinola Hotel",sub:"Midtown",price:"$289/nt",rating:4.8,desc:"Detroit's most storied boutique. Every detail made in-house. The rooftop bar is reason enough to stay.",meta:"Check-in 3PM",tags:["Rooftop Bar","Local Design"],color:"#0d1a18",quote:"The most thoughtfully designed hotel I've stayed in."},
+      {id:"h2",name:"The Siren Hotel",sub:"Downtown",price:"$199/nt",rating:4.7,desc:"An art deco landmark reborn. Tiny rooms, huge personality. The lobby bar never closes early.",meta:"Check-in 3PM",tags:["Art Deco","Lively Lobby"],color:"#1a0d14",quote:"The lobby alone is worth the stay. A true Detroit landmark."},
+      {id:"h3",name:"Westin Book Cadillac",sub:"Downtown",price:"$249/nt",rating:4.6,desc:"A century-old grande dame. Soaring ceilings, impeccable service, and the city's best brunch.",meta:"Check-in 4PM",tags:["Historic","Full Service"],color:"#0e0a1a",quote:"The service here is the best I've experienced in the Midwest."},
+      {id:"h4",name:"Graduate Detroit",sub:"Ann Arbor",price:"$159/nt",rating:4.6,desc:"Campus-cool hotel full of Michigan nostalgia. Laid-back rooms, great coffee, walkable to everything.",meta:"Check-in 3PM",tags:["Casual","Great Location"],color:"#1a1005",quote:"The most comfortable budget stay I've had anywhere."},
+    ],
+    Chicago:[
+      {id:"h5",name:"The Ace Hotel",sub:"West Loop",price:"$229/nt",rating:4.7,desc:"The West Loop's coolest address. Record players, locally curated minibars, a rooftop that gets packed by 9PM.",meta:"Check-in 3PM",tags:["Rooftop","Music Scene"],color:"#0d0d1a",quote:"Stayed here once and couldn't imagine staying anywhere else in Chicago."},
+      {id:"h6",name:"The Langham Chicago",sub:"River North",price:"$545/nt",rating:4.9,desc:"Hands-down the finest hotel in Chicago. The Chuan Spa and river views are unmatched.",meta:"Check-in 3PM",tags:["Spa","5-Star"],color:"#1a0a0a",quote:"The Chuan Spa is worth the price of the stay alone."},
+      {id:"h7",name:"Chicago Athletic Assoc.",sub:"Millennium Park",price:"$319/nt",rating:4.8,desc:"A converted 1893 athletic club. Game room, rooftop overlooking the park, a lobby that stops people dead.",meta:"Check-in 4PM",tags:["Historic","Lake Views"],color:"#081410",quote:"Every time I walk into the lobby I still can't believe this place exists."},
+      {id:"h8",name:"Virgin Hotels Chicago",sub:"Near North",price:"$269/nt",rating:4.7,desc:"Playful, design-forward rooms with daybeds and a rooftop pool that's packed all summer.",meta:"Check-in 3PM",tags:["Pool","Rooftop"],color:"#1a0610",quote:"The rooms here are genuinely clever. Every detail has been thought through."},
+    ],
+    "New York":[
+      {id:"h9",name:"The NoMad Hotel",sub:"NoMad",price:"$399/nt",rating:4.8,desc:"Romantic Paris-meets-Manhattan grandeur. The NoMad Bar and restaurant inside are legends.",meta:"Check-in 3PM",tags:["Iconic Bar","Central"],color:"#100a04",quote:"The NoMad Bar is the most beautiful bar in New York City."},
+      {id:"h10",name:"1 Hotel Central Park",sub:"Midtown",price:"$589/nt",rating:4.8,desc:"Sustainability meets luxury overlooking the park. The rooftop greenhouse and spa are extraordinary.",meta:"Check-in 3PM",tags:["Eco-Luxury","Park Views"],color:"#081408",quote:"The park views from the rooftop greenhouse stopped me cold."},
+      {id:"h11",name:"The William Vale",sub:"Williamsburg",price:"$349/nt",rating:4.7,desc:"Brooklyn's best skyline hotel. The rooftop pool and Manhattan views together are hard to beat.",meta:"Check-in 3PM",tags:["Rooftop Pool","Skyline"],color:"#0a0a18",quote:"Swimming in the rooftop pool with the Manhattan skyline in front of you is surreal."},
+      {id:"h12",name:"Aman New York",sub:"Midtown",price:"$1800/nt",rating:4.9,desc:"The most discreet luxury in Manhattan. One of the great spa experiences on the planet.",meta:"Check-in 4PM",tags:["Ultra-Luxury","World-Class Spa"],color:"#14080a",quote:"The spa here is the best I've experienced anywhere in the world."},
+    ],
+    Miami:[
+      {id:"h13",name:"Faena Hotel Miami Beach",sub:"Mid-Beach",price:"$799/nt",rating:4.8,desc:"Alan Faena's fever dream. Gold mammoth skeleton in the lobby, Damien Hirst artwork, cabaret nightly.",meta:"Check-in 3PM",tags:["Art","Cabaret"],color:"#180a04",quote:"Not just a hotel. An art installation you happen to sleep in."},
+      {id:"h14",name:"1 Hotel South Beach",sub:"South Beach",price:"$649/nt",rating:4.7,desc:"Ocean-to-table dining, two rooftop pools, and a spa that makes you want to stay forever.",meta:"Check-in 3PM",tags:["Rooftop Pools","Oceanfront"],color:"#061810",quote:"I extended my stay by two days because I couldn't bring myself to leave."},
+      {id:"h15",name:"The Standard Spa",sub:"Mid-Beach",price:"$289/nt",rating:4.6,desc:"The world's most fun spa hotel. Hammam, a bay-facing pool, and an impossibly cool crowd.",meta:"Check-in 3PM",tags:["Spa","Waterfront"],color:"#0a0618",quote:"The hammam here is a genuine must-do when in Miami."},
+      {id:"h16",name:"SLS Brickell",sub:"Brickell",price:"$259/nt",rating:4.6,desc:"Phillipe Starck design and a rooftop infinity pool with the city spread below.",meta:"Check-in 3PM",tags:["Infinity Pool","City Views"],color:"#14061a",quote:"The infinity pool at sunset is everything you imagine Miami to be."},
+    ],
+    LA:[
+      {id:"h17",name:"Chateau Marmont",sub:"West Hollywood",price:"$599/nt",rating:4.7,desc:"The most mythologized hotel in America. Bungalows, a legendary pool, and 90 years of secrets.",meta:"Check-in 3PM",tags:["Iconic","Pool Bungalows"],color:"#0e1006",quote:"90 years of Hollywood history in every corner. There's nowhere else like it."},
+      {id:"h18",name:"The Line LA",sub:"Koreatown",price:"$249/nt",rating:4.7,desc:"Roy Choi's food-driven hotel. KTown cool meets genuine hospitality. The pool scene on weekends is surreal.",meta:"Check-in 3PM",tags:["Food-Driven","Pool Scene"],color:"#0a0a10",quote:"The best food hotel in LA, and it's not particularly close."},
+      {id:"h19",name:"Hotel Figueroa",sub:"DTLA",price:"$229/nt",rating:4.6,desc:"A 1926 Spanish colonial with a moody courtyard pool and some of the best cocktails in DTLA.",meta:"Check-in 3PM",tags:["Courtyard Pool","Historic"],color:"#180a06",quote:"The courtyard pool at night with a cocktail is one of the great LA experiences."},
+      {id:"h20",name:"Ace Hotel Downtown LA",sub:"DTLA",price:"$269/nt",rating:4.6,desc:"Inside a converted United Artists theater. The rooftop pool and views of DTLA are cinematic.",meta:"Check-in 3PM",tags:["Rooftop","Theater History"],color:"#080d14",quote:"Staying in a converted United Artists theater is the only way to do DTLA."},
+    ],
+  },
+  experiences:{
+    Detroit:[
+      {id:"e1",name:"Eastern Market Food Tour",sub:"2.5 hrs · Food & Drink",price:"$65/pp",rating:4.9,type:"Foodie",desc:"The country's oldest farmers market. Charcuterie, hot sauce, pierogi, and vendors who've been here for decades.",meta:"Sat 9:00 AM",tags:["Local","Small Group"],color:"#0e1804",quote:"The most authentic Detroit experience you can have as a visitor."},
+      {id:"e2",name:"Detroit Distillery Tour",sub:"1.5 hrs · Drinks",price:"$45/pp",rating:4.7,type:"Social",desc:"Tour the city's craft distillery renaissance. Blind tastings, cocktail demos, and a take-home bottle.",meta:"Fri 5:00 PM",tags:["Spirits","Tasting"],color:"#1a0c04",quote:"Changed how I think about craft spirits entirely."},
+      {id:"e3",name:"Belle Isle Kayak Adventure",sub:"2 hrs · Outdoor",price:"$55/pp",rating:4.8,type:"Active",desc:"Paddle around Detroit's island gem with a guide who knows every blue heron nest and secret cove.",meta:"Daily 8:00 AM",tags:["Outdoor","Scenic"],color:"#041a10",quote:"Seeing Detroit from the water gives you a completely different perspective."},
+      {id:"e4",name:"Motown Museum VIP",sub:"2 hrs · Culture",price:"$89/pp",rating:4.9,type:"Culture",desc:"Stand in Studio A where Marvin Gaye, Stevie Wonder, and Diana Ross recorded.",meta:"Tue-Sun 11AM",tags:["Music","Historic"],color:"#1a0418",quote:"Standing in Studio A gave me actual chills. A truly special experience."},
+    ],
+    Chicago:[
+      {id:"e5",name:"Deep Dish Pizza Masterclass",sub:"3 hrs · Food & Drink",price:"$95/pp",rating:4.8,type:"Foodie",desc:"Make Chicago's signature dish from scratch with a local pitmaster. You eat what you make.",meta:"Sat & Sun",tags:["Hands-On","Delicious"],color:"#1a0804",quote:"I've made this pizza at home three times since. Nothing beats the real lesson."},
+      {id:"e6",name:"Architecture River Cruise",sub:"90 min · Culture",price:"$52/pp",rating:4.9,type:"Culture",desc:"The definitive Chicago experience. Expert guides unpack 50+ landmark buildings from the river.",meta:"Daily 1PM",tags:["Iconic","Views"],color:"#040e1a",quote:"The single best way to understand Chicago as a city. Completely unmissable."},
+      {id:"e7",name:"Second City Private Show",sub:"2.5 hrs · Nightlife",price:"$75/pp",rating:4.8,type:"Social",desc:"A private performance from the theater that launched SNL, Stephen Colbert, and Tina Fey.",meta:"Fri & Sat",tags:["Comedy","Drinks Included"],color:"#14041a",quote:"I laughed until I cried. The improv set at the end was extraordinary."},
+      {id:"e8",name:"Chicago Speakeasy Crawl",sub:"3 hrs · Nightlife",price:"$85/pp",rating:4.7,type:"Social",desc:"Three Prohibition-era bars hidden beneath the city. A guide with period costumes leads the way.",meta:"Thu-Sat 8PM",tags:["Nightlife","Hidden Gems"],color:"#0a0a14",quote:"I've lived in Chicago five years and had no idea these places existed."},
+    ],
+    "New York":[
+      {id:"e9",name:"Brooklyn Food Immersion",sub:"3.5 hrs · Food & Drink",price:"$110/pp",rating:4.9,type:"Foodie",desc:"Smorgasburg, artisan bagels, dumpling folding in Sunset Park, and a finale at one of Brooklyn's best wine bars.",meta:"Sat 10AM",tags:["Neighborhoods","Tasting"],color:"#0e0c04",quote:"The definitive Brooklyn food experience. Every stop was exceptional."},
+      {id:"e10",name:"Jazz at Village Vanguard",sub:"2 hrs · Culture",price:"$35/pp",rating:4.9,type:"Culture",desc:"The greatest jazz club in the world. Monday nights are the legendary Vanguard Jazz Orchestra.",meta:"Nightly 9PM",tags:["Legendary","Intimate"],color:"#06040e",quote:"The Village Vanguard on a Monday night is a New York experience with no equal."},
+      {id:"e11",name:"Private Rooftop Yoga",sub:"75 min · Wellness",price:"$65/pp",rating:4.8,type:"Wellness",desc:"Sunrise yoga on a private Midtown rooftop overlooking the Empire State Building. Max 8 people.",meta:"Daily 6:30AM",tags:["Sunrise","Skyline Views"],color:"#041814",quote:"The most peaceful 75 minutes I've had in New York City."},
+      {id:"e12",name:"Governors Island Picnic",sub:"Half day · Outdoors",price:"$120/pp",rating:4.8,type:"Romantic",desc:"Private curated picnic on the car-free island. Charcuterie, champagne, blankets, bikes.",meta:"Weekends",tags:["Romantic","Private"],color:"#0a1404",quote:"The most romantic afternoon I've had in New York. The skyline backdrop is unreal."},
+    ],
+    Miami:[
+      {id:"e13",name:"Wynwood Art Walk",sub:"2 hrs · Culture",price:"$55/pp",rating:4.8,type:"Culture",desc:"The world's largest open-air street art museum with a local artist as guide.",meta:"Thu-Sat 6PM",tags:["Art","Cocktails Included"],color:"#140618",quote:"Our guide's passion for the art totally changed how I look at street art."},
+      {id:"e14",name:"South Beach Sunset Sail",sub:"2 hrs · Outdoor",price:"$89/pp",rating:4.9,type:"Romantic",desc:"A private catamaran into Biscayne Bay as the sun melts into the water. Champagne on board.",meta:"Daily 5:30PM",tags:["Romantic","Private Boat"],color:"#041810",quote:"The most beautiful two hours of my entire trip. Don't skip this."},
+      {id:"e15",name:"Little Havana Food Tour",sub:"2.5 hrs · Food & Drink",price:"$75/pp",rating:4.9,type:"Foodie",desc:"Cortadito, croquetas, pastelitos, dominos, cigars, and a mojito. A neighborhood that time forgot.",meta:"Daily 11AM",tags:["Local","Cultural"],color:"#1a0a04",quote:"Felt like stepping into another country entirely. Magical neighborhood."},
+      {id:"e16",name:"Biscayne Bay Snorkel",sub:"3 hrs · Outdoor",price:"$95/pp",rating:4.7,type:"Active",desc:"Gear up and drop into the technicolor reef system just offshore. Sea turtles and manatees.",meta:"Daily 9AM",tags:["Marine Life","Active"],color:"#04101a",quote:"Saw three sea turtles and a manatee. Absolutely worth it."},
+    ],
+    LA:[
+      {id:"e17",name:"Hollywood Hills Sunrise Hike",sub:"2 hrs · Outdoor",price:"$65/pp",rating:4.9,type:"Active",desc:"Beat the crowds to the Griffith Observatory. Guides time it perfectly for golden hour.",meta:"Daily 5:30AM",tags:["Views","Small Group"],color:"#0e1004",quote:"Worth the 5AM wake-up call every single time. The views are extraordinary."},
+      {id:"e18",name:"Malibu Wine & Vineyard Tour",sub:"4 hrs · Food & Drink",price:"$145/pp",rating:4.8,type:"Foodie",desc:"Three Malibu vineyard estates with tastings paired to local food.",meta:"Sat & Sun",tags:["Wine","Scenic Drive"],color:"#14080a",quote:"The canyon vineyards of Malibu are one of LA's best kept secrets."},
+      {id:"e19",name:"LA Street Food Deep Dive",sub:"3 hrs · Food & Drink",price:"$85/pp",rating:4.9,type:"Foodie",desc:"Tacos from the truck that inspired a thousand imitations, birria from Boyle Heights, elote from the original cart.",meta:"Daily 12PM",tags:["Authentic","Local"],color:"#1a0c04",quote:"The birria here made everything I'd eaten before feel like an imitation."},
+      {id:"e20",name:"Private Chef Experience",sub:"3 hrs · Food & Drink",price:"$220/pp",rating:4.9,type:"Luxury",desc:"A Michelin-trained chef comes to your rental. Market shopping, four courses, full table service.",meta:"Any Evening",tags:["Luxury","Exclusive"],color:"#060814",quote:"The most intimate and impressive dining experience I've had anywhere."},
+    ],
+  },
+};
+
+const FILTER_DEFS={
+  restaurants:[
+    {key:"city",label:"City",type:"pills",options:["Detroit","Chicago","New York","Miami","LA"]},
+    {key:"when",label:"When",type:"calendar",mode:"single"},
+    {key:"party",label:"Party Size",type:"pills",options:["1","2","3","4","5","6","7+"]},
+    {key:"cuisine",label:"Cuisine",type:"pills",options:["American","Italian","Chinese","Sushi","French","Seafood","Steakhouse"]},
+    {key:"price",label:"Price",type:"pills",options:["$","$$","$$$","$$$$"]},
+    {key:"rating",label:"Min Rating",type:"pills",options:["4.5+","4.7+","4.9+"]},
+  ],
+  hotels:[
+    {key:"city",label:"City",type:"pills",options:["Detroit","Chicago","New York","Miami","LA"]},
+    {key:"when",label:"Check-in / Check-out",type:"calendar",mode:"range"},
+    {key:"price",label:"Price",type:"pills",options:["Budget","Mid-Range","Upscale","Luxury"]},
+    {key:"rating",label:"Min Rating",type:"pills",options:["4.5+","4.7+","4.9+"]},
+  ],
+  experiences:[
+    {key:"city",label:"City",type:"pills",options:["Detroit","Chicago","New York","Miami","LA"]},
+    {key:"when",label:"When",type:"calendar",mode:"single"},
+    {key:"party",label:"People",type:"pills",options:["1","2","3","4","5","6","7+"]},
+    {key:"type",label:"Experience Type",type:"pills",options:["Foodie","Social","Active","Culture","Romantic","Wellness","Luxury"]},
+    {key:"price",label:"Price",type:"pills",options:["$","$$","$$$","$$$$"]},
+    {key:"rating",label:"Min Rating",type:"pills",options:["4.5+","4.7+","4.9+"]},
+  ],
+};
+
+const SWIPE_LEFT={restaurants:"NEXT TABLE",hotels:"NEXT ROOM",experiences:"NEXT ONE"};
+const CONF_LABEL={restaurants:"RESERVATION CONFIRMED",hotels:"STAY CONFIRMED",experiences:"EXPERIENCE BOOKED"};
+const CTA_LABEL={restaurants:"FIND ANOTHER RESTAURANT",hotels:"FIND ANOTHER STAY",experiences:"FIND ANOTHER EXPERIENCE"};
+
+function fmtChip(key,val,cat){
+  if(!val)return null;
+  if(key==="city")return val+", "+CITY_ST[val];
+  if(key==="party"){if(cat==="hotels")return val+(val!=="1"&&val!=="Suite"?" rooms":" room");return val+(val!=="1"?" guests":" guest");}
+  if(key==="when"){
+    if(val.checkin&&val.checkout)return MON_SHORT[val.checkin.getMonth()]+" "+val.checkin.getDate()+" → "+MON_SHORT[val.checkout.getMonth()]+" "+val.checkout.getDate();
+    if(val.checkin)return MON_SHORT[val.checkin.getMonth()]+" "+val.checkin.getDate()+" →";
+    if(val.date){let s=MON_SHORT[val.date.getMonth()]+" "+val.date.getDate();if(val.timeRange)s+=" · "+val.timeRange;return s;}
+    return null;
+  }
+  if(key==="rating")return val+" min";
+  return val;
+}
+
+function MiniCalendar({mode,value,onChange}){
+  const today=new Date();
+  const [vy,setVY]=useState(today.getFullYear());
+  const [vm,setVM]=useState(today.getMonth());
+  const prevM=()=>{if(vm===0){setVM(11);setVY(y=>y-1);}else setVM(m=>m-1);};
+  const nextM=()=>{if(vm===11){setVM(0);setVY(y=>y+1);}else setVM(m=>m+1);};
+  const dim=new Date(vy,vm+1,0).getDate();
+  const fd=new Date(vy,vm,1).getDay();
+  const cells=[];
+  for(let i=0;i<fd;i++)cells.push(null);
+  for(let d=1;d<=dim;d++)cells.push(d);
+  const dateOf=d=>new Date(vy,vm,d);
+  const sameDay=(a,b)=>a&&b&&a.toDateString()===b.toDateString();
+  const todayStart=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const getStatus=day=>{
+    if(!day)return"empty";
+    const d=dateOf(day);
+    if(d<todayStart)return"past";
+    const v=value||{};
+    if(mode==="range"){if(sameDay(d,v.checkin))return"start";if(sameDay(d,v.checkout))return"end";if(v.checkin&&v.checkout&&d>v.checkin&&d<v.checkout)return"mid";}
+    else{if(sameDay(d,v.date))return"selected";}
+    return"normal";
+  };
+  const handleDay=day=>{
+    const d=dateOf(day);
+    if(d<todayStart)return;
+    if(mode==="range"){const v=value||{};if(!v.checkin||(v.checkin&&v.checkout)){onChange({checkin:d,checkout:null});}else{if(d>v.checkin)onChange({checkin:v.checkin,checkout:d});else onChange({checkin:d,checkout:null});}}
+    else{onChange({...((value)||{}),date:d});}
+  };
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <button onClick={prevM} style={{background:"none",border:"none",color:C.secondary,cursor:"pointer",fontSize:22,padding:"0 6px",fontFamily:F}}>‹</button>
+        <span style={{color:C.primary,fontSize:13,fontWeight:600,fontFamily:F}}>{MON_SHORT[vm]} {vy}</span>
+        <button onClick={nextM} style={{background:"none",border:"none",color:C.secondary,cursor:"pointer",fontSize:22,padding:"0 6px",fontFamily:F}}>›</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
+        {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{textAlign:"center",color:C.muted,fontSize:10,fontFamily:F,padding:"2px 0"}}>{d}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+        {cells.map((day,i)=>{
+          const st=getStatus(day);
+          const isSel=st==="selected"||st==="start"||st==="end";
+          const isMid=st==="mid";
+          const isPast=st==="past";
+          return <button key={i} onClick={()=>{if(day&&st!=="past")handleDay(day);}} style={{background:isSel?C.primary:isMid?C.surfaceHi:"transparent",color:isSel?"#000":isPast||!day?C.border:C.secondary,border:"none",borderRadius:4,padding:"7px 0",fontSize:12,fontFamily:F,fontWeight:isSel?700:400,cursor:day&&!isPast?"pointer":"default",textAlign:"center",transition:"all 0.12s"}}>{day||""}</button>;
+        })}
+      </div>
+      {mode==="single"&&(
+        <div style={{marginTop:16}}>
+          <div style={{color:C.muted,fontSize:10,letterSpacing:"0.1em",marginBottom:10,fontFamily:F}}>TIME</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {TIME_OPTS.map(t=>{const active=value&&value.timeRange===t;return <button key={t} onClick={()=>onChange({...((value)||{}),timeRange:active?null:t})} style={{background:active?C.primary:"transparent",color:active?"#000":C.secondary,border:"1px solid "+(active?C.primary:C.border),borderRadius:2,padding:"6px 12px",fontSize:11,fontFamily:F,fontWeight:active?600:400,cursor:"pointer",transition:"all 0.12s"}}>{t}</button>;})}
+          </div>
+        </div>
+      )}
+      {mode==="range"&&value&&value.checkin&&<div style={{marginTop:12,color:C.tertiary,fontSize:11,fontFamily:F}}>{value.checkout?"Check-out: "+MON_SHORT[value.checkout.getMonth()]+" "+value.checkout.getDate():"Now select check-out date"}</div>}
+    </div>
+  );
+}
+
+function PhotoGallery({photos,color}){
+  const [idx,setIdx]=useState(0);
+  const [errs,setErrs]=useState({});
+  const ref=useRef(null);
+  const onScroll=()=>{if(!ref.current)return;setIdx(Math.round(ref.current.scrollLeft/ref.current.offsetWidth));};
+  const goTo=i=>{setIdx(i);if(ref.current)ref.current.scrollTo({left:i*ref.current.offsetWidth,behavior:"smooth"});};
+  return(
+    <div style={{position:"relative",width:"100%",height:260,borderRadius:"12px 12px 0 0",overflow:"hidden",background:"linear-gradient(160deg,"+color+",#020202)"}}>
+      <div ref={ref} onScroll={onScroll} style={{display:"flex",width:"100%",height:"100%",overflowX:"scroll",scrollSnapType:"x mandatory",scrollbarWidth:"none"}}>
+        {photos.map((url,i)=>(
+          <div key={i} style={{flexShrink:0,width:"100%",height:"100%",scrollSnapAlign:"start",position:"relative"}}>
+            {!errs[i]&&<img src={url} alt="" onError={()=>setErrs(e=>({...e,[i]:true}))} style={{width:"100%",height:"100%",objectFit:"cover"}}/>}
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 50%)"}}/>
+          </div>
+        ))}
+      </div>
+      <div style={{position:"absolute",bottom:12,left:0,right:0,display:"flex",justifyContent:"center",gap:5}}>
+        {photos.map((_,i)=><button key={i} onClick={()=>goTo(i)} style={{width:i===idx?16:5,height:5,borderRadius:3,background:i===idx?C.primary:"rgba(255,255,255,0.3)",border:"none",cursor:"pointer",padding:0,transition:"all 0.2s"}}/>)}
+      </div>
+    </div>
+  );
+}
+
+function DetailSheet({item,cat,open,onClose,onLeft,onRight}){
+  const dragY=useRef(null);
+  if(!item)return null;
+  const photos=getPhotos(cat,item.id);
+  const detailLabel=cat==="hotels"?"The Stay":cat==="experiences"?"What to Expect":"Why Go";
+  return(
+    <>
+      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",opacity:open?1:0,pointerEvents:open?"auto":"none",transition:"opacity 0.3s",zIndex:55}}/>
+      <div onTouchStart={e=>{dragY.current=e.touches[0].clientY;}} onTouchEnd={e=>{if(dragY.current&&e.changedTouches[0].clientY-dragY.current>80)onClose();dragY.current=null;}}
+        style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%) translateY("+(open?"0":"100%")+")",width:"100%",maxWidth:440,background:"#0e0e0e",borderRadius:"18px 18px 0 0",border:"1px solid "+C.border,borderBottom:"none",zIndex:60,transition:"transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94)",maxHeight:"92vh",overflowY:"auto",scrollbarWidth:"none"}}>
+        <div style={{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:6,position:"sticky",top:0,background:"#0e0e0e",zIndex:2}}>
+          <div style={{width:32,height:3,borderRadius:2,background:C.border}}/>
+        </div>
+        <PhotoGallery photos={photos} color={item.color}/>
+        <div style={{padding:"20px 22px 0"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+            <div style={{flex:1,paddingRight:12}}>
+              <div style={{color:C.secondary,fontSize:10,letterSpacing:"0.12em",fontFamily:F,marginBottom:5}}>{item.sub.toUpperCase()}</div>
+              <div style={{color:C.primary,fontFamily:F,fontWeight:700,fontSize:22,letterSpacing:-0.5,lineHeight:1.15}}>{item.name}</div>
+            </div>
+            <div style={{background:C.surfaceHi,borderRadius:4,padding:"6px 12px",textAlign:"center",flexShrink:0}}>
+              <div style={{color:C.primary,fontFamily:F,fontWeight:700,fontSize:16}}>{item.rating}</div>
+              <div style={{color:C.muted,fontSize:9,fontFamily:F}}>/5</div>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+            {item.tags.map((t,i)=><span key={t} style={{background:i===0?C.primary:"transparent",color:i===0?"#000":C.secondary,border:i===0?"none":"1px solid "+C.border,borderRadius:2,padding:"3px 8px",fontSize:9,letterSpacing:"0.06em",fontFamily:F,fontWeight:i===0?600:400}}>{t.toUpperCase()}</span>)}
+            <span style={{color:C.primary,fontFamily:F,fontWeight:700,fontSize:13,marginLeft:"auto"}}>{item.price}</span>
+          </div>
+          <div style={{borderTop:"1px solid "+C.border,marginBottom:16}}/>
+          <div style={{marginBottom:16}}>
+            <div style={{color:C.secondary,fontSize:11,letterSpacing:"0.1em",fontFamily:F,marginBottom:8}}>{detailLabel.toUpperCase()}</div>
+            <p style={{color:C.secondary,fontSize:13,lineHeight:1.75,fontFamily:F,margin:0}}>{item.desc}</p>
+          </div>
+          {item.quote&&(
+            <div style={{background:C.surface,borderRadius:6,padding:"14px 16px",marginBottom:16,borderLeft:"2px solid "+C.borderHi}}>
+              <p style={{color:C.tertiary,fontSize:12,lineHeight:1.65,fontFamily:F,margin:"0 0 6px",fontStyle:"italic"}}>"{item.quote}"</p>
+              <span style={{color:C.muted,fontSize:10,letterSpacing:"0.08em",fontFamily:F}}>GUEST REVIEW</span>
+            </div>
+          )}
+          <div style={{marginBottom:20}}>
+            <div style={{color:C.secondary,fontSize:11,letterSpacing:"0.1em",fontFamily:F,marginBottom:8}}>DETAILS</div>
+            <div style={{color:C.tertiary,fontSize:12,fontFamily:F,lineHeight:1.6}}>{item.sub} · {item.price}</div>
+            <div style={{color:C.tertiary,fontSize:12,fontFamily:F,marginTop:4}}>Next available: {item.meta}</div>
+          </div>
+        </div>
+        <div style={{padding:"10px 22px 36px",borderTop:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"center",gap:20}}>
+          <button onClick={onLeft} style={{width:50,height:50,borderRadius:"50%",background:"transparent",border:"1.5px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="#777" strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+          <button onClick={onRight} style={{width:64,height:64,borderRadius:"50%",background:C.primary,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 28px rgba(255,255,255,0.14)"}}>
+            <svg width="22" height="18" viewBox="0 0 24 18" fill="none"><path d="M2 9L9 16L22 2" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div style={{width:50,height:50,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{color:C.muted,fontSize:10,letterSpacing:"0.08em",fontFamily:F}}>RESERVE</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function App(){
+  const [splash,setSplash]=useState(true);
+  const [splashFade,setSplashFade]=useState(false);
+  useEffect(()=>{
+    const t1=setTimeout(()=>setSplashFade(true),1800);
+    const t2=setTimeout(()=>setSplash(false),2500);
+    return()=>{clearTimeout(t1);clearTimeout(t2);};
+  },[]);
+
+  const [activeCat,setActiveCat]=useState("restaurants");
+  const [filters,setFilters]=useState({city:"Detroit"});
+  const [sheetOpen,setSheetOpen]=useState(false);
+  const [detailOpen,setDetailOpen]=useState(false);
+  const [cardIdx,setCardIdx]=useState({restaurants:0,hotels:0,experiences:0});
+  const [booked,setBooked]=useState(null);
+  const [selTime,setSelTime]=useState(null);
+  const [dragX,setDragX]=useState(0);
+  const [swipeDir,setSwipeDir]=useState(null);
+  const [hintDir,setHintDir]=useState(null);
+  const [isSnapping,setIsSnapping]=useState(false);
+
+  const txX=useRef(null),txY=useRef(null),txT=useRef(null),isDrag=useRef(false);
+  const mxX=useRef(null),mxT=useRef(null),isMDrag=useRef(false),wasDrag=useRef(false);
+
+  useEffect(()=>{
+    if(sheetOpen||booked||detailOpen)return;
+    const onMove=e=>{if(!isMDrag.current)return;const dx=e.clientX-mxX.current;setDragX(dx);setHintDir(dx>30?"right":dx<-30?"left":null);if(Math.abs(dx)>5)wasDrag.current=true;};
+    const onUp=e=>{if(!isMDrag.current)return;const dx=e.clientX-mxX.current;const vel=dx/(Date.now()-mxT.current);if(wasDrag.current){if(Math.abs(vel)>0.35||Math.abs(dx)>110)doSwipe(dx>0?"right":"left");else snapBack();}isMDrag.current=false;};
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("mouseup",onUp);
+    return()=>{document.removeEventListener("mousemove",onMove);document.removeEventListener("mouseup",onUp);};
+  },[sheetOpen,booked,detailOpen,activeCat]);
+
+  const cityItems=DATA[activeCat][filters.city||"Detroit"]||[];
+  const filtered=cityItems.filter(r=>{
+    if(filters.cuisine&&r.cuisine!==filters.cuisine)return false;
+    if(filters.type&&r.type!==filters.type)return false;
+    if(filters.price){const m={Budget:"$","Mid-Range":"$$",Upscale:"$$$",Luxury:"$$$$"};if(!r.price.startsWith(m[filters.price]||filters.price))return false;}
+    if(filters.rating&&r.rating<parseFloat(filters.rating))return false;
+    return true;
+  });
+  const ci=cardIdx[activeCat];
+  const safeLen=Math.max(filtered.length,1);
+  const current=filtered[ci%safeLen];
+  const next=filtered[(ci+1)%safeLen];
+
+  const snapBack=()=>{setIsSnapping(true);setDragX(0);setHintDir(null);setTimeout(()=>setIsSnapping(false),350);};
+  const doSwipe=dir=>{
+    if(swipeDir)return;
+    setDetailOpen(false);setSwipeDir(dir);setDragX(0);setHintDir(null);
+    setTimeout(()=>{setSwipeDir(null);if(dir==="right"&&current){setBooked(current);setSelTime(null);}else setCardIdx(c=>({...c,[activeCat]:c[activeCat]+1}));},400);
+  };
+
+  const onTouchStart=e=>{if(sheetOpen||detailOpen)return;txX.current=e.touches[0].clientX;txY.current=e.touches[0].clientY;txT.current=Date.now();isDrag.current=false;};
+  const onTouchMove=e=>{
+    if(sheetOpen||detailOpen||!txX.current)return;
+    const dx=e.touches[0].clientX-txX.current,dy=e.touches[0].clientY-txY.current;
+    if(!isDrag.current){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8)isDrag.current=true;else if(Math.abs(dy)>12){txX.current=null;return;}}
+    if(isDrag.current){e.preventDefault();setDragX(dx);setHintDir(dx>30?"right":dx<-30?"left":null);}
+  };
+  const onTouchEnd=e=>{
+    if(sheetOpen||detailOpen)return;
+    const dx=txX.current?e.changedTouches[0].clientX-txX.current:0;
+    const dy=txX.current?e.changedTouches[0].clientY-txY.current:0;
+    if(!isDrag.current&&Math.abs(dx)<8&&Math.abs(dy)<8&&txX.current!==null){setDetailOpen(true);txX.current=null;return;}
+    if(isDrag.current){const dt=Date.now()-txT.current;if(Math.abs(dx/dt)>0.35||Math.abs(dx)>110)doSwipe(dx>0?"right":"left");else snapBack();}
+    txX.current=null;isDrag.current=false;
+  };
+  const onMouseDown=e=>{if(sheetOpen||detailOpen)return;mxX.current=e.clientX;mxT.current=Date.now();isMDrag.current=true;wasDrag.current=false;};
+  const onCardClick=()=>{if(!wasDrag.current&&!sheetOpen&&!detailOpen)setDetailOpen(true);wasDrag.current=false;};
+
+  const setFilter=(key,val)=>{
+    setFilters(f=>{if(key!=="city"&&f[key]===val){const nf={...f};delete nf[key];return nf;}return{...f,[key]:val};});
+    if(key==="city")setCardIdx({restaurants:0,hotels:0,experiences:0});
+  };
+  const removeChip=key=>{if(key==="city")return;setFilters(f=>{const nf={...f};delete nf[key];return nf;});};
+
+  const CHIP_ORDER=["city","when","party","cuisine","type","price","rating"];
+  const chips=CHIP_ORDER.filter(k=>filters[k]).map(k=>({key:k,label:fmtChip(k,filters[k],activeCat)})).filter(c=>c.label);
+  const animX=swipeDir==="right"?600:swipeDir==="left"?-600:dragX;
+  const animRot=swipeDir==="right"?28:swipeDir==="left"?-28:dragX/14;
+  const animating=!!swipeDir;
+  const oa=Math.min(Math.abs(dragX)/100,1);
+  const fDefs=FILTER_DEFS[activeCat];
+
+  return(
+    <div style={{height:"100vh",background:BG,display:"flex",flexDirection:"column",alignItems:"center",fontFamily:F,overflow:"hidden",position:"relative"}}>
+      {/* Splash */}
+      {splash&&(
+        <div style={{position:"fixed",inset:0,background:BG,zIndex:999,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",opacity:splashFade?0:1,transition:"opacity 0.7s ease-out",pointerEvents:splashFade?"none":"auto"}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{color:C.primary,fontWeight:700,fontSize:42,letterSpacing:"0.22em",fontFamily:F,marginBottom:16}}>SCOUT</div>
+            <div style={{color:C.muted,fontSize:13,letterSpacing:"0.12em",fontFamily:F}}>Stop searching. Start going.</div>
+          </div>
+        </div>
+      )}
+      <div style={{width:"100%",maxWidth:440,flex:1,display:"flex",flexDirection:"column",boxSizing:"border-box",overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{padding:"22px 24px 0",flexShrink:0}}>
+          <span style={{color:C.primary,fontWeight:700,fontSize:17,letterSpacing:"0.18em"}}>SCOUT</span>
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",padding:"14px 0 0",borderBottom:"1px solid "+C.border,flexShrink:0}}>
+          {[{key:"restaurants",label:"Eat"},{key:"hotels",label:"Stay"},{key:"experiences",label:"Play"}].map(tab=>{
+            const active=activeCat===tab.key;
+            return <button key={tab.key} onClick={()=>setActiveCat(tab.key)} style={{flex:1,background:"none",border:"none",borderBottom:"3px solid "+(active?C.primary:"transparent"),padding:"0 0 12px",color:active?C.primary:C.muted,fontFamily:F,fontSize:21,fontWeight:active?700:400,cursor:"pointer",marginBottom:-1,transition:"all 0.18s"}}>{tab.label}</button>;
+          })}
+        </div>
+        {/* Context bar */}
+        <div style={{padding:"10px 24px 8px",display:"flex",alignItems:"center",gap:8,minHeight:42,flexShrink:0}}>
+          <div style={{display:"flex",gap:6,flex:1,alignItems:"center",overflowX:"auto",scrollbarWidth:"none",flexWrap:"nowrap"}}>
+            {chips.length===0
+              ?<span style={{color:C.muted,fontSize:11,letterSpacing:"0.06em",whiteSpace:"nowrap"}}>Use filter to narrow results</span>
+              :chips.map(chip=>(
+                <button key={chip.key} onClick={()=>removeChip(chip.key)} style={{background:chip.key==="city"?"transparent":C.surfaceHi,color:chip.key==="city"?C.tertiary:C.primary,border:"1px solid "+(chip.key==="city"?C.border:C.borderHi),borderRadius:20,padding:"4px 10px",fontSize:11,fontFamily:F,cursor:chip.key==="city"?"default":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                  {chip.label}{chip.key!=="city"&&<span style={{color:C.muted,fontSize:9}}>×</span>}
+                </button>
+              ))
+            }
+          </div>
+          <button onClick={()=>setSheetOpen(true)} style={{background:"none",border:"1px solid "+(sheetOpen?C.primary:C.border),borderRadius:6,padding:"6px 10px",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",gap:5}}>
+            <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
+              <line x1="0" y1="1.5" x2="14" y2="1.5" stroke={C.secondary} strokeWidth="1.2"/>
+              <line x1="0" y1="5.5" x2="14" y2="5.5" stroke={C.secondary} strokeWidth="1.2"/>
+              <line x1="0" y1="9.5" x2="14" y2="9.5" stroke={C.secondary} strokeWidth="1.2"/>
+              <circle cx="4.5" cy="1.5" r="2" fill={BG} stroke={C.secondary} strokeWidth="1.2"/>
+              <circle cx="9.5" cy="5.5" r="2" fill={BG} stroke={C.secondary} strokeWidth="1.2"/>
+              <circle cx="5.5" cy="9.5" r="2" fill={BG} stroke={C.secondary} strokeWidth="1.2"/>
+            </svg>
+            <span style={{color:C.secondary,fontSize:10,letterSpacing:"0.08em"}}>FILTER</span>
+          </button>
+        </div>
+        {/* Cards */}
+        <div style={{flex:1,padding:"6px 16px 0",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"relative",width:"100%",height:"100%",userSelect:"none"}}>
+            {next&&filtered.length>1&&(
+              <div style={{position:"absolute",top:10,left:8,right:8,bottom:10,borderRadius:14,overflow:"hidden",opacity:0.28,transform:"scale(0.95)"}}>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,"+next.color+",#020202)"}}/>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.85),rgba(0,0,0,0.1))"}}/>
+              </div>
+            )}
+            {current&&(
+              <div onMouseDown={onMouseDown} onClick={onCardClick} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+                style={{position:"absolute",top:0,left:0,right:0,bottom:0,borderRadius:14,overflow:"hidden",cursor:"grab",
+                  transform:"translateX("+animX+"px) rotate("+animRot+"deg)",
+                  transition:animating?"transform 0.4s cubic-bezier(0.6,-0.2,0.74,0.05),opacity 0.4s":isSnapping?"transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)":"none",
+                  opacity:animating?0:1,boxShadow:"0 20px 60px rgba(0,0,0,0.9)",touchAction:"pan-y"}}>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,"+current.color+",#020202)"}}/>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.97) 0%,rgba(0,0,0,0.2) 52%,transparent 100%)"}}/>
+                <div style={{position:"absolute",top:16,right:16,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(8px)",borderRadius:3,padding:"5px 10px",display:"flex",alignItems:"baseline",gap:3}}>
+                  <span style={{color:C.primary,fontWeight:700,fontSize:15}}>{current.rating}</span>
+                  <span style={{color:C.tertiary,fontSize:9}}>/5</span>
+                </div>
+                <div style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",borderRadius:3,padding:"4px 10px"}}>
+                  <span style={{color:"rgba(255,255,255,0.4)",fontSize:9,letterSpacing:"0.1em"}}>TAP FOR MORE</span>
+                </div>
+                {hintDir==="left"&&(
+                  <div style={{position:"absolute",inset:0,zIndex:5,pointerEvents:"none",background:"rgba(0,0,0,"+(oa*0.22)+")"}}>
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",opacity:Math.max(0,oa*1.6-0.15)}}>
+                      <div style={{width:72,height:72,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.75)",display:"flex",alignItems:"center",justifyContent:"center",transform:"scale("+(0.55+oa*0.5)+")",marginBottom:12}}>
+                        <svg width="26" height="26" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      </div>
+                      <span style={{color:"rgba(255,255,255,0.75)",fontSize:11,letterSpacing:"0.2em",fontFamily:F,fontWeight:600}}>{SWIPE_LEFT[activeCat]}</span>
+                    </div>
+                  </div>
+                )}
+                {hintDir==="right"&&(
+                  <div style={{position:"absolute",inset:0,zIndex:5,pointerEvents:"none",background:"rgba(255,255,255,"+(oa*0.1)+")"}}>
+                    <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",opacity:Math.max(0,oa*1.6-0.15)}}>
+                      <div style={{width:72,height:72,borderRadius:"50%",border:"2px solid rgba(255,255,255,0.9)",display:"flex",alignItems:"center",justifyContent:"center",transform:"scale("+(0.55+oa*0.5)+")",marginBottom:12}}>
+                        <svg width="28" height="22" viewBox="0 0 24 18" fill="none"><path d="M2 9L9 16L22 2" stroke="rgba(255,255,255,0.9)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <span style={{color:"rgba(255,255,255,0.9)",fontSize:11,letterSpacing:"0.2em",fontFamily:F,fontWeight:600}}>RESERVE</span>
+                    </div>
+                  </div>
+                )}
+                <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"0 20px 20px",zIndex:4}}>
+                  <div style={{color:C.secondary,fontSize:10,letterSpacing:"0.12em",marginBottom:5}}>{current.sub.toUpperCase()}</div>
+                  <div style={{color:C.primary,fontWeight:700,fontSize:21,letterSpacing:-0.3,lineHeight:1.15,marginBottom:8}}>{current.name}</div>
+                  <p style={{color:C.secondary,fontSize:12,lineHeight:1.7,margin:"0 0 12px"}}>{current.desc}</p>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{display:"flex",gap:5}}>
+                      {current.tags.slice(0,2).map((t,i)=><span key={t} style={{background:i===0?C.primary:"transparent",color:i===0?"#000":C.secondary,border:i===0?"none":"1px solid "+C.border,borderRadius:2,padding:"3px 8px",fontSize:9,letterSpacing:"0.06em",fontWeight:i===0?600:400}}>{t.toUpperCase()}</span>)}
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{color:C.primary,fontWeight:700,fontSize:14}}>{current.price}</div>
+                      <div style={{color:C.tertiary,fontSize:10,marginTop:1}}>{current.meta}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Buttons */}
+        <div style={{padding:"14px 24px 28px",display:"flex",alignItems:"center",justifyContent:"center",gap:20,flexShrink:0}}>
+          <button onMouseEnter={()=>{if(!isMDrag.current)setHintDir("left");}} onMouseLeave={()=>{if(!isMDrag.current)setHintDir(null);}} onClick={()=>doSwipe("left")} onMouseDown={e=>e.stopPropagation()}
+            style={{width:50,height:50,borderRadius:"50%",background:"transparent",border:"1.5px solid "+(dragX<-20?C.borderHi:C.border),cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transform:"scale("+(1+(dragX<0?Math.min(Math.abs(dragX)/80,1)*0.3:0))+")",transition:"transform 0.05s,border-color 0.15s",boxShadow:dragX<-20?"0 0 20px rgba(255,255,255,"+(Math.min(Math.abs(dragX)/80,1)*0.15)+")":"none"}}>
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke={dragX<-20?"#bbb":"#777"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+          <button onMouseEnter={()=>{if(!isMDrag.current)setHintDir("right");}} onMouseLeave={()=>{if(!isMDrag.current)setHintDir(null);}} onClick={()=>doSwipe("right")} onMouseDown={e=>e.stopPropagation()}
+            style={{width:64,height:64,borderRadius:"50%",background:C.primary,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transform:"scale("+(1+(dragX>0?Math.min(dragX/80,1)*0.3:0))+")",transition:"transform 0.05s",boxShadow:"0 8px 28px rgba(255,255,255,"+(0.14+Math.min(Math.max(dragX,0)/80,1)*0.3)+")"}}>
+            <svg width="22" height="18" viewBox="0 0 24 18" fill="none"><path d="M2 9L9 16L22 2" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <div style={{width:50,height:50,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{color:C.tertiary,fontWeight:600,fontSize:11}}>{(ci%safeLen)+1}<span style={{color:C.muted}}>/{filtered.length}</span></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter backdrop */}
+      <div onClick={()=>setSheetOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",opacity:sheetOpen?1:0,pointerEvents:sheetOpen?"auto":"none",transition:"opacity 0.3s",zIndex:40}}/>
+      {/* Filter sheet */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%) translateY("+(sheetOpen?"0":"100%")+")",width:"100%",maxWidth:440,background:"#0e0e0e",borderRadius:"18px 18px 0 0",border:"1px solid "+C.border,borderBottom:"none",zIndex:50,transition:"transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94)",maxHeight:"78vh",overflowY:"auto",scrollbarWidth:"none"}}>
+        <div style={{display:"flex",justifyContent:"center",paddingTop:14,paddingBottom:2}}>
+          <div style={{width:32,height:3,borderRadius:2,background:C.border}}/>
+        </div>
+        <div style={{padding:"10px 24px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid "+C.border}}>
+          <span style={{color:C.primary,fontWeight:700,fontSize:15,fontFamily:F}}>Filters</span>
+          <button onClick={()=>setFilters({city:"Detroit"})} style={{background:"none",border:"none",color:C.muted,fontSize:11,cursor:"pointer",letterSpacing:"0.08em",fontFamily:F}}>RESET ALL</button>
+        </div>
+        <div style={{padding:"16px 24px 48px"}}>
+          {fDefs.map((fd,si)=>(
+            <div key={fd.key} style={{marginBottom:22,paddingBottom:22,borderBottom:si<fDefs.length-1?"1px solid "+C.border:"none"}}>
+              <div style={{color:C.secondary,fontSize:11,letterSpacing:"0.1em",marginBottom:12,fontFamily:F}}>{fd.label.toUpperCase()}</div>
+              {fd.type==="calendar"
+                ?<MiniCalendar mode={fd.mode} value={filters[fd.key]||{}} onChange={v=>setFilters(f=>({...f,[fd.key]:v}))}/>
+                :<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {fd.options.map(opt=>{const active=filters[fd.key]===opt;return <button key={opt} onClick={()=>setFilter(fd.key,opt)} style={{background:active?C.primary:"transparent",color:active?"#000":C.secondary,border:"1px solid "+(active?C.primary:C.border),borderRadius:2,padding:"7px 14px",fontSize:12,cursor:"pointer",fontFamily:F,fontWeight:active?600:400,whiteSpace:"nowrap",transition:"all 0.15s"}}>{opt}</button>;})}
+                </div>
+              }
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Detail sheet */}
+      <DetailSheet item={current} cat={activeCat} open={detailOpen} onClose={()=>setDetailOpen(false)}
+        onLeft={()=>{setDetailOpen(false);setTimeout(()=>doSwipe("left"),50);}}
+        onRight={()=>{setDetailOpen(false);setTimeout(()=>doSwipe("right"),50);}}
+      />
+
+      {/* Booking overlay */}
+      {booked&&(
+        <div style={{position:"fixed",inset:0,background:BG,zIndex:80,display:"flex",flexDirection:"column",alignItems:"center",overflowY:"auto"}}>
+          <div style={{width:"100%",maxWidth:440,padding:"0 24px",flex:1,display:"flex",flexDirection:"column",boxSizing:"border-box"}}>
+            <div style={{padding:"22px 0 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{color:C.primary,fontWeight:700,fontSize:17,letterSpacing:"0.18em"}}>SCOUT</span>
+              <button onClick={()=>{setBooked(null);setSelTime(null);}} style={{background:"none",border:"none",color:C.muted,fontSize:11,cursor:"pointer",letterSpacing:"0.08em",fontFamily:F}}>← BACK</button>
+            </div>
+            <div style={{marginBottom:24}}>
+              <div style={{color:C.secondary,fontSize:10,letterSpacing:"0.18em",marginBottom:12,fontFamily:F}}>{CONF_LABEL[activeCat]}</div>
+              <h2 style={{color:C.primary,fontSize:42,fontWeight:700,margin:0,letterSpacing:-1.5,fontFamily:F}}>You're in.</h2>
+            </div>
+            <div style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",marginBottom:24}}>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,"+booked.color+",#020202)"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.95),rgba(0,0,0,0.1))"}}/>
+              <div style={{position:"absolute",bottom:0,left:0,right:0,padding:20}}>
+                <div style={{color:C.secondary,fontSize:10,letterSpacing:"0.1em",marginBottom:4,fontFamily:F}}>{filters.city} · {booked.sub}</div>
+                <div style={{color:C.primary,fontWeight:700,fontSize:20,fontFamily:F}}>{booked.name}</div>
+                <div style={{color:C.primary,fontWeight:700,fontSize:13,marginTop:6,fontFamily:F}}>{booked.price}</div>
+              </div>
+            </div>
+            <div style={{marginBottom:24}}>
+              <div style={{color:C.secondary,fontSize:10,letterSpacing:"0.1em",marginBottom:12,fontFamily:F}}>SELECT TIME</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {(activeCat==="hotels"?["Check-in 3PM","Check-in 4PM"]:["12:00 PM","6:00 PM","7:30 PM","9:00 PM"]).map(t=>(
+                  <button key={t} onClick={()=>setSelTime(t)} style={{background:selTime===t?C.primary:"transparent",color:selTime===t?"#000":C.secondary,border:"1px solid "+(selTime===t?C.primary:C.border),borderRadius:2,padding:"10px 16px",fontSize:12,fontFamily:F,cursor:"pointer",fontWeight:selTime===t?600:400,transition:"all 0.15s"}}>{t}</button>
+                ))}
+              </div>
+            </div>
+            {selTime&&(
+              <div style={{borderLeft:"2px solid "+C.primary,paddingLeft:16,marginBottom:28}}>
+                <div style={{color:C.primary,fontWeight:700,fontSize:14,fontFamily:F}}>Locked in · {selTime}</div>
+                <div style={{color:C.tertiary,fontSize:12,marginTop:4,fontFamily:F}}>Confirmation sent to your phone</div>
+              </div>
+            )}
+            <div style={{flex:1}}/>
+            <button onClick={()=>{setBooked(null);setSelTime(null);}} style={{width:"100%",padding:"14px",borderRadius:2,background:"transparent",color:C.tertiary,border:"1px solid "+C.border,fontSize:11,cursor:"pointer",fontFamily:F,letterSpacing:"0.1em",marginBottom:24}}>{CTA_LABEL[activeCat]}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
